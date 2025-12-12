@@ -12,6 +12,33 @@ npm i -g backup-bear-notes
 backup-bear-notes ./my-backup-location
 ```
 
+Use the `--use-tags-as-directories` flag to organize notes into folders by tag:
+
+```sh
+backup-bear-notes ./my-backup-location --use-tags-as-directories
+```
+
+# Features
+
+- Handles duplicate note titles by appending numeric suffixes (-1, -2, etc.)
+- Handles empty or whitespace-only titles gracefully
+- Optional tag-based directory organization
+
+# Development
+
+```sh
+npm install
+node index.js <output-directory>
+```
+
+## Testing
+
+```sh
+npm test                 # run tests
+npm run test:watch       # watch mode
+npm run test:coverage    # with coverage
+```
+
 # License
 
 [WTFPL](https://wtfpl2.com)

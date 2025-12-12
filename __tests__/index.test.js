@@ -2,11 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import path from 'path'
 import { backup } from '../lib/backup.js'
 
-function makeMockSqlite(rows = []) {
+function makeMockSqlite(rows = [], fileRows = null) {
+	const mockDb = {
+		all: fileRows !== null
+			? vi.fn()
+				.mockResolvedValueOnce(rows)
+				.mockResolvedValueOnce(fileRows)
+			: vi.fn().mockResolvedValue(rows),
+	}
 	return {
-		open: vi.fn().mockResolvedValue({
-			all: vi.fn().mockResolvedValue(rows),
-		}),
+		open: vi.fn().mockResolvedValue(mockDb),
 	}
 }
 
@@ -18,6 +23,8 @@ function makeMockFs() {
 	return {
 		writeFile: vi.fn().mockResolvedValue(undefined),
 		unlink: vi.fn().mockResolvedValue(undefined),
+		copyFile: vi.fn().mockResolvedValue(undefined),
+		utimes: vi.fn().mockResolvedValue(undefined),
 	}
 }
 
@@ -944,6 +951,551 @@ describe('backup function', () => {
 				const filename = path.basename(call[0])
 				expect(Buffer.byteLength(filename, 'utf8')).toBeLessThanOrEqual(255)
 			}
+		})
+	})
+
+	describe('asset backup', () => {
+		it('should create assets directory when localFilesPath is provided', async () => {
+			mockSqlite = makeMockSqlite([], [])
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+				localFilesPath: '/test/Local Files',
+			})
+
+			expect(mockMakeDir).toHaveBeenCalledWith('/output/path')
+			expect(mockMakeDir).toHaveBeenCalledWith(path.join('/output/path', 'assets'))
+		})
+
+		it('should not create assets directory when localFilesPath is not provided', async () => {
+			mockSqlite = makeMockSqlite([])
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+			})
+
+			expect(mockMakeDir).toHaveBeenCalledTimes(1)
+			expect(mockMakeDir).toHaveBeenCalledWith('/output/path')
+		})
+
+		it('should query ZSFNOTEFILE table when localFilesPath is provided', async () => {
+			const mockDb = {
+				all: vi.fn()
+					.mockResolvedValueOnce([])
+					.mockResolvedValueOnce([]),
+			}
+			mockSqlite = { open: vi.fn().mockResolvedValue(mockDb) }
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+				localFilesPath: '/test/Local Files',
+			})
+
+			expect(mockDb.all).toHaveBeenCalledTimes(2)
+			expect(mockDb.all).toHaveBeenNthCalledWith(2, expect.stringContaining('ZSFNOTEFILE'))
+		})
+
+		it('should copy image files from Note Images folder with UUID prefix', async () => {
+			mockSqlite = makeMockSqlite(
+				[{ id: 1, title: 'Note', text: '![](test.png)', tag: null, trashed: 0 }],
+				[{ noteId: 1, uuid: 'ABC12345-DEFG-HIJK', filename: 'test.png', extension: 'png' }]
+			)
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+				localFilesPath: '/test/Local Files',
+			})
+
+			expect(mockFs.copyFile).toHaveBeenCalledWith(
+				path.join('/test/Local Files', 'Note Images', 'ABC12345-DEFG-HIJK', 'test.png'),
+				path.join('/output/path', 'assets', 'ABC12345-test.png')
+			)
+		})
+
+		it('should copy attachment files from Note Files folder', async () => {
+			mockSqlite = makeMockSqlite(
+				[{ id: 1, title: 'Note', text: '[doc.pdf](doc.pdf)', tag: null, trashed: 0 }],
+				[{ noteId: 1, uuid: 'XYZ98765-QRST-UVWX', filename: 'doc.pdf', extension: 'pdf' }]
+			)
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+				localFilesPath: '/test/Local Files',
+			})
+
+			expect(mockFs.copyFile).toHaveBeenCalledWith(
+				path.join('/test/Local Files', 'Note Files', 'XYZ98765-QRST-UVWX', 'doc.pdf'),
+				path.join('/output/path', 'assets', 'XYZ98765-doc.pdf')
+			)
+		})
+
+		it('should rewrite image references in markdown to include assets/ path', async () => {
+			mockSqlite = makeMockSqlite(
+				[{ id: 1, title: 'Note', text: '# My Note\n\n![](image.png)\n\nSome text', tag: null, trashed: 0 }],
+				[{ noteId: 1, uuid: 'AAAABBBB-CCCC-DDDD', filename: 'image.png', extension: 'png' }]
+			)
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+				localFilesPath: '/test/Local Files',
+			})
+
+			expect(mockFs.writeFile).toHaveBeenCalledWith(
+				path.join('/output/path', 'Note.md'),
+				'# My Note\n\n![](assets/AAAABBBB-image.png)\n\nSome text',
+				{ encoding: 'utf8' }
+			)
+		})
+
+		it('should rewrite URL-encoded image references', async () => {
+			mockSqlite = makeMockSqlite(
+				[{ id: 1, title: 'Note', text: '![](my%20image.png)', tag: null, trashed: 0 }],
+				[{ noteId: 1, uuid: '11112222-3333-4444', filename: 'my image.png', extension: 'png' }]
+			)
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+				localFilesPath: '/test/Local Files',
+			})
+
+			expect(mockFs.writeFile).toHaveBeenCalledWith(
+				path.join('/output/path', 'Note.md'),
+				'![](assets/11112222-my%20image.png)',
+				{ encoding: 'utf8' }
+			)
+		})
+
+		it('should rewrite attachment references in markdown', async () => {
+			mockSqlite = makeMockSqlite(
+				[{ id: 1, title: 'Note', text: '[Report.xlsx](Report.xlsx)<!-- {"embed":"true"} -->', tag: null, trashed: 0 }],
+				[{ noteId: 1, uuid: 'FILE1234-5678-ABCD', filename: 'Report.xlsx', extension: 'xlsx' }]
+			)
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+				localFilesPath: '/test/Local Files',
+			})
+
+			expect(mockFs.writeFile).toHaveBeenCalledWith(
+				path.join('/output/path', 'Note.md'),
+				'[Report.xlsx](assets/FILE1234-Report.xlsx)<!-- {"embed":"true"} -->',
+				{ encoding: 'utf8' }
+			)
+		})
+
+		it('should use ../assets/ path when useTagsAsDirectories is true', async () => {
+			mockSqlite = makeMockSqlite(
+				[{ id: 1, title: 'Note', text: '![](image.png)', tag: 'work', trashed: 0 }],
+				[{ noteId: 1, uuid: 'TAG12345-WORK-NOTE', filename: 'image.png', extension: 'png' }]
+			)
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				useTagsAsDirectories: true,
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+				localFilesPath: '/test/Local Files',
+			})
+
+			expect(mockFs.writeFile).toHaveBeenCalledWith(
+				path.join('/output/path', 'work', 'Note.md'),
+				'![](../assets/TAG12345-image.png)',
+				{ encoding: 'utf8' }
+			)
+		})
+
+		it('should handle notes with multiple images', async () => {
+			mockSqlite = makeMockSqlite(
+				[{ id: 1, title: 'Note', text: '![](a.png)\n![](b.png)', tag: null, trashed: 0 }],
+				[
+					{ noteId: 1, uuid: 'UUID-AAA-1234', filename: 'a.png', extension: 'png' },
+					{ noteId: 1, uuid: 'UUID-BBB-5678', filename: 'b.png', extension: 'png' },
+				]
+			)
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+				localFilesPath: '/test/Local Files',
+			})
+
+			expect(mockFs.copyFile).toHaveBeenCalledTimes(2)
+			expect(mockFs.writeFile).toHaveBeenCalledWith(
+				path.join('/output/path', 'Note.md'),
+				'![](assets/UUID-AAA-a.png)\n![](assets/UUID-BBB-b.png)',
+				{ encoding: 'utf8' }
+			)
+		})
+
+		it('should handle notes with no files', async () => {
+			mockSqlite = makeMockSqlite(
+				[{ id: 1, title: 'Note', text: 'Just text, no images', tag: null, trashed: 0 }],
+				[]
+			)
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+				localFilesPath: '/test/Local Files',
+			})
+
+			expect(mockFs.copyFile).not.toHaveBeenCalled()
+			expect(mockFs.writeFile).toHaveBeenCalledWith(
+				path.join('/output/path', 'Note.md'),
+				'Just text, no images',
+				{ encoding: 'utf8' }
+			)
+		})
+
+		it('should skip missing source files gracefully with ENOENT error', async () => {
+			mockSqlite = makeMockSqlite(
+				[{ id: 1, title: 'Note', text: '![](missing.png)', tag: null, trashed: 0 }],
+				[{ noteId: 1, uuid: 'MISS1234-NOPE-FILE', filename: 'missing.png', extension: 'png' }]
+			)
+			mockMakeDir = makeMockMakeDir()
+			const enoentError = new Error('ENOENT: no such file or directory')
+			enoentError.code = 'ENOENT'
+			mockFs = {
+				writeFile: vi.fn().mockResolvedValue(undefined),
+				unlink: vi.fn().mockResolvedValue(undefined),
+				copyFile: vi.fn().mockRejectedValue(enoentError),
+			}
+
+			await expect(backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+				localFilesPath: '/test/Local Files',
+			})).resolves.not.toThrow()
+		})
+
+		it('should propagate non-ENOENT errors when copying files', async () => {
+			mockSqlite = makeMockSqlite(
+				[{ id: 1, title: 'Note', text: '![](image.png)', tag: null, trashed: 0 }],
+				[{ noteId: 1, uuid: 'ERR12345-PERM-DENY', filename: 'image.png', extension: 'png' }]
+			)
+			mockMakeDir = makeMockMakeDir()
+			const permError = new Error('EACCES: permission denied')
+			permError.code = 'EACCES'
+			mockFs = {
+				writeFile: vi.fn().mockResolvedValue(undefined),
+				unlink: vi.fn().mockResolvedValue(undefined),
+				copyFile: vi.fn().mockRejectedValue(permError),
+			}
+
+			await expect(backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+				localFilesPath: '/test/Local Files',
+			})).rejects.toThrow('EACCES')
+		})
+
+		it('should deduplicate file copies by UUID when same file appears in multiple notes', async () => {
+			mockSqlite = makeMockSqlite(
+				[
+					{ id: 1, title: 'Note 1', text: '![](shared.png)', tag: null, trashed: 0 },
+					{ id: 2, title: 'Note 2', text: '![](shared.png)', tag: null, trashed: 0 },
+				],
+				[
+					{ noteId: 1, uuid: 'SHARED-UUID-1234', filename: 'shared.png', extension: 'png' },
+					{ noteId: 2, uuid: 'SHARED-UUID-1234', filename: 'shared.png', extension: 'png' },
+				]
+			)
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+				localFilesPath: '/test/Local Files',
+			})
+
+			expect(mockFs.copyFile).toHaveBeenCalledTimes(1)
+		})
+
+		it('should truncate asset filename when original filename is too long', async () => {
+			const longFilename = 'a'.repeat(300) + '.png'
+			mockSqlite = makeMockSqlite(
+				[{ id: 1, title: 'Note', text: `![](${longFilename})`, tag: null, trashed: 0 }],
+				[{ noteId: 1, uuid: 'LONG1234-FILE-NAME', filename: longFilename, extension: 'png' }]
+			)
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+				localFilesPath: '/test/Local Files',
+			})
+
+			const copyCall = mockFs.copyFile.mock.calls[0]
+			const destFilename = path.basename(copyCall[1])
+			expect(Buffer.byteLength(destFilename, 'utf8')).toBeLessThanOrEqual(255)
+			expect(destFilename.startsWith('LONG1234-')).toBe(true)
+		})
+
+		it('should skip files with null uuid or filename', async () => {
+			mockSqlite = makeMockSqlite(
+				[{ id: 1, title: 'Note', text: 'Content', tag: null, trashed: 0 }],
+				[
+					{ noteId: 1, uuid: null, filename: 'test.png', extension: 'png' },
+					{ noteId: 1, uuid: 'VALID123-UUID-HERE', filename: null, extension: 'png' },
+				]
+			)
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+				localFilesPath: '/test/Local Files',
+			})
+
+			expect(mockFs.copyFile).not.toHaveBeenCalled()
+		})
+
+		it('should handle images with special characters in filename', async () => {
+			mockSqlite = makeMockSqlite(
+				[{ id: 1, title: 'Note', text: '![](image (1).png)', tag: null, trashed: 0 }],
+				[{ noteId: 1, uuid: 'SPEC1234-CHAR-FILE', filename: 'image (1).png', extension: 'png' }]
+			)
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+				localFilesPath: '/test/Local Files',
+			})
+
+			expect(mockFs.copyFile).toHaveBeenCalledWith(
+				path.join('/test/Local Files', 'Note Images', 'SPEC1234-CHAR-FILE', 'image (1).png'),
+				path.join('/output/path', 'assets', 'SPEC1234-image (1).png')
+			)
+		})
+
+		it('should place all assets in single shared folder when useTagsAsDirectories is true', async () => {
+			mockSqlite = makeMockSqlite(
+				[
+					{ id: 1, title: 'Work Note', text: '![](work.png)', tag: 'work', trashed: 0 },
+					{ id: 2, title: 'Home Note', text: '![](home.png)', tag: 'home', trashed: 0 },
+				],
+				[
+					{ noteId: 1, uuid: 'WORK1234-UUID-HERE', filename: 'work.png', extension: 'png' },
+					{ noteId: 2, uuid: 'HOME5678-UUID-HERE', filename: 'home.png', extension: 'png' },
+				]
+			)
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				useTagsAsDirectories: true,
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+				localFilesPath: '/test/Local Files',
+			})
+
+			expect(mockFs.copyFile).toHaveBeenCalledWith(
+				expect.any(String),
+				path.join('/output/path', 'assets', 'WORK1234-work.png')
+			)
+			expect(mockFs.copyFile).toHaveBeenCalledWith(
+				expect.any(String),
+				path.join('/output/path', 'assets', 'HOME5678-home.png')
+			)
+		})
+	})
+
+	describe('modification date preservation', () => {
+		const CORE_DATA_EPOCH_SECONDS = Date.UTC(2001, 0, 1) / 1000
+
+		it('should call fs.utimes with correct Date when modificationDate is present', async () => {
+			const modificationDate = 727810948.573216
+			mockSqlite = makeMockSqlite([
+				{ id: 1, title: 'Note', text: 'Content', tag: null, trashed: 0, modificationDate },
+			])
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+			})
+
+			expect(mockFs.utimes).toHaveBeenCalledTimes(1)
+			const [filePath, atime, mtime] = mockFs.utimes.mock.calls[0]
+			expect(filePath).toBe(path.join('/output/path', 'Note.md'))
+			expect(atime).toBeInstanceOf(Date)
+			expect(mtime).toBeInstanceOf(Date)
+			const expectedDate = new Date((modificationDate + CORE_DATA_EPOCH_SECONDS) * 1000)
+			expect(mtime.getTime()).toBe(expectedDate.getTime())
+		})
+
+		it('should not call fs.utimes when modificationDate is null', async () => {
+			mockSqlite = makeMockSqlite([
+				{ id: 1, title: 'Note', text: 'Content', tag: null, trashed: 0, modificationDate: null },
+			])
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+			})
+
+			expect(mockFs.utimes).not.toHaveBeenCalled()
+		})
+
+		it('should not call fs.utimes when modificationDate is undefined', async () => {
+			mockSqlite = makeMockSqlite([
+				{ id: 1, title: 'Note', text: 'Content', tag: null, trashed: 0 },
+			])
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+			})
+
+			expect(mockFs.utimes).not.toHaveBeenCalled()
+		})
+
+		it('should not call fs.utimes for trashed notes', async () => {
+			mockSqlite = makeMockSqlite([
+				{ id: 1, title: 'Note', text: 'Content', tag: null, trashed: 1, modificationDate: 727810948 },
+			])
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+			})
+
+			expect(mockFs.utimes).not.toHaveBeenCalled()
+		})
+
+		it('should set correct timestamps for multiple notes with different modification dates', async () => {
+			const modDate1 = 700000000
+			const modDate2 = 750000000
+			mockSqlite = makeMockSqlite([
+				{ id: 1, title: 'Note 1', text: 'Content 1', tag: null, trashed: 0, modificationDate: modDate1 },
+				{ id: 2, title: 'Note 2', text: 'Content 2', tag: null, trashed: 0, modificationDate: modDate2 },
+			])
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+			})
+
+			expect(mockFs.utimes).toHaveBeenCalledTimes(2)
+
+			const call1 = mockFs.utimes.mock.calls.find(call => call[0].includes('Note 1'))
+			const call2 = mockFs.utimes.mock.calls.find(call => call[0].includes('Note 2'))
+
+			const expectedDate1 = new Date((modDate1 + CORE_DATA_EPOCH_SECONDS) * 1000)
+			const expectedDate2 = new Date((modDate2 + CORE_DATA_EPOCH_SECONDS) * 1000)
+
+			expect(call1[2].getTime()).toBe(expectedDate1.getTime())
+			expect(call2[2].getTime()).toBe(expectedDate2.getTime())
+		})
+
+		it('should convert Core Data epoch timestamp correctly to JavaScript Date', async () => {
+			const coreDataTimestamp = 0
+			mockSqlite = makeMockSqlite([
+				{ id: 1, title: 'Note', text: 'Content', tag: null, trashed: 0, modificationDate: coreDataTimestamp },
+			])
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+			})
+
+			const [, , mtime] = mockFs.utimes.mock.calls[0]
+			expect(mtime.getUTCFullYear()).toBe(2001)
+			expect(mtime.getUTCMonth()).toBe(0)
+			expect(mtime.getUTCDate()).toBe(1)
 		})
 	})
 })

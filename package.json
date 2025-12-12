@@ -4,7 +4,9 @@
   "description": "Back up your Bear Notes content to a folder",
   "bin": "index.js",
   "scripts": {
-    "test": "node test.js"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "repository": {
     "type": "git",
@@ -24,5 +26,9 @@
     "pify": "4.0.1",
     "sqlite": "3.0.0",
     "untildify": "3.0.3"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.0",
+    "vitest": "^2.1.0"
   }
 }

@@ -48,8 +48,8 @@ describe('backup function', () => {
 
 		it('should create tag directories when useTagsAsDirectories is true', async () => {
 			mockSqlite = makeMockSqlite([
-				{ title: 'Note 1', text: 'Content 1', tag: 'work', trashed: 0 },
-				{ title: 'Note 2', text: 'Content 2', tag: 'personal', trashed: 0 },
+				{ id: 1, title: 'Note 1', text: 'Content 1', tag: 'work', trashed: 0 },
+				{ id: 2, title: 'Note 2', text: 'Content 2', tag: 'personal', trashed: 0 },
 			])
 			mockMakeDir = makeMockMakeDir()
 			mockFs = makeMockFs()
@@ -69,7 +69,7 @@ describe('backup function', () => {
 
 		it('should create untagged directory for notes without tags when useTagsAsDirectories is true', async () => {
 			mockSqlite = makeMockSqlite([
-				{ title: 'Note 1', text: 'Content 1', tag: null, trashed: 0 },
+				{ id: 1, title: 'Note 1', text: 'Content 1', tag: null, trashed: 0 },
 			])
 			mockMakeDir = makeMockMakeDir()
 			mockFs = makeMockFs()
@@ -156,7 +156,7 @@ describe('backup function', () => {
 	describe('file writing for non-trashed notes', () => {
 		it('should write note content to file with correct path', async () => {
 			mockSqlite = makeMockSqlite([
-				{ title: 'Test Note', text: 'Note content', tag: null, trashed: 0 },
+				{ id: 1, title: 'Test Note', text: 'Note content', tag: null, trashed: 0 },
 			])
 			mockMakeDir = makeMockMakeDir()
 			mockFs = makeMockFs()
@@ -177,8 +177,8 @@ describe('backup function', () => {
 
 		it('should write multiple notes', async () => {
 			mockSqlite = makeMockSqlite([
-				{ title: 'Note 1', text: 'Content 1', tag: null, trashed: 0 },
-				{ title: 'Note 2', text: 'Content 2', tag: null, trashed: 0 },
+				{ id: 1, title: 'Note 1', text: 'Content 1', tag: null, trashed: 0 },
+				{ id: 2, title: 'Note 2', text: 'Content 2', tag: null, trashed: 0 },
 			])
 			mockMakeDir = makeMockMakeDir()
 			mockFs = makeMockFs()
@@ -195,7 +195,7 @@ describe('backup function', () => {
 
 		it('should write to tag directory when useTagsAsDirectories is true', async () => {
 			mockSqlite = makeMockSqlite([
-				{ title: 'Work Note', text: 'Work content', tag: 'work', trashed: 0 },
+				{ id: 1, title: 'Work Note', text: 'Work content', tag: 'work', trashed: 0 },
 			])
 			mockMakeDir = makeMockMakeDir()
 			mockFs = makeMockFs()
@@ -217,7 +217,7 @@ describe('backup function', () => {
 
 		it('should write to untagged directory for null tag when useTagsAsDirectories is true', async () => {
 			mockSqlite = makeMockSqlite([
-				{ title: 'Untagged Note', text: 'Untagged content', tag: null, trashed: 0 },
+				{ id: 1, title: 'Untagged Note', text: 'Untagged content', tag: null, trashed: 0 },
 			])
 			mockMakeDir = makeMockMakeDir()
 			mockFs = makeMockFs()
@@ -241,7 +241,7 @@ describe('backup function', () => {
 	describe('file deletion for trashed notes', () => {
 		it('should delete file for trashed note', async () => {
 			mockSqlite = makeMockSqlite([
-				{ title: 'Trashed Note', text: 'Trashed content', tag: null, trashed: 1 },
+				{ id: 1, title: 'Trashed Note', text: 'Trashed content', tag: null, trashed: 1 },
 			])
 			mockMakeDir = makeMockMakeDir()
 			mockFs = makeMockFs()
@@ -261,7 +261,7 @@ describe('backup function', () => {
 
 		it('should delete from tag directory when useTagsAsDirectories is true', async () => {
 			mockSqlite = makeMockSqlite([
-				{ title: 'Trashed Work Note', text: 'Content', tag: 'work', trashed: 1 },
+				{ id: 1, title: 'Trashed Work Note', text: 'Content', tag: 'work', trashed: 1 },
 			])
 			mockMakeDir = makeMockMakeDir()
 			mockFs = makeMockFs()
@@ -283,8 +283,8 @@ describe('backup function', () => {
 	describe('mixed operations', () => {
 		it('should handle mix of trashed and non-trashed notes', async () => {
 			mockSqlite = makeMockSqlite([
-				{ title: 'Active Note', text: 'Active content', tag: null, trashed: 0 },
-				{ title: 'Trashed Note', text: 'Trashed content', tag: null, trashed: 1 },
+				{ id: 1, title: 'Active Note', text: 'Active content', tag: null, trashed: 0 },
+				{ id: 2, title: 'Trashed Note', text: 'Trashed content', tag: null, trashed: 1 },
 			])
 			mockMakeDir = makeMockMakeDir()
 			mockFs = makeMockFs()
@@ -302,9 +302,9 @@ describe('backup function', () => {
 
 		it('should return array with results for all operations', async () => {
 			mockSqlite = makeMockSqlite([
-				{ title: 'Note 1', text: 'Content 1', tag: null, trashed: 0 },
-				{ title: 'Note 2', text: 'Content 2', tag: null, trashed: 0 },
-				{ title: 'Note 3', text: 'Content 3', tag: null, trashed: 1 },
+				{ id: 1, title: 'Note 1', text: 'Content 1', tag: null, trashed: 0 },
+				{ id: 2, title: 'Note 2', text: 'Content 2', tag: null, trashed: 0 },
+				{ id: 3, title: 'Note 3', text: 'Content 3', tag: null, trashed: 1 },
 			])
 			mockMakeDir = makeMockMakeDir()
 			mockFs = makeMockFs()
@@ -323,7 +323,7 @@ describe('backup function', () => {
 	describe('title sanitization', () => {
 		it('should sanitize titles with slashes', async () => {
 			mockSqlite = makeMockSqlite([
-				{ title: 'Note/With/Slashes', text: 'Content', tag: null, trashed: 0 },
+				{ id: 1, title: 'Note/With/Slashes', text: 'Content', tag: null, trashed: 0 },
 			])
 			mockMakeDir = makeMockMakeDir()
 			mockFs = makeMockFs()
@@ -346,9 +346,9 @@ describe('backup function', () => {
 	describe('tag deduplication', () => {
 		it('should deduplicate tags when creating directories', async () => {
 			mockSqlite = makeMockSqlite([
-				{ title: 'Note 1', text: 'Content 1', tag: 'work', trashed: 0 },
-				{ title: 'Note 2', text: 'Content 2', tag: 'work', trashed: 0 },
-				{ title: 'Note 3', text: 'Content 3', tag: 'work', trashed: 0 },
+				{ id: 1, title: 'Note 1', text: 'Content 1', tag: 'work', trashed: 0 },
+				{ id: 2, title: 'Note 2', text: 'Content 2', tag: 'work', trashed: 0 },
+				{ id: 3, title: 'Note 3', text: 'Content 3', tag: 'work', trashed: 0 },
 			])
 			mockMakeDir = makeMockMakeDir()
 			mockFs = makeMockFs()
@@ -447,7 +447,7 @@ describe('backup function', () => {
 
 		it('should propagate error when fs.writeFile fails to write note', async () => {
 			mockSqlite = makeMockSqlite([
-				{ title: 'Test Note', text: 'Content', tag: null, trashed: 0 },
+				{ id: 1, title: 'Test Note', text: 'Content', tag: null, trashed: 0 },
 			])
 			mockMakeDir = makeMockMakeDir()
 			mockFs = {
@@ -463,14 +463,16 @@ describe('backup function', () => {
 			})).rejects.toThrow('Disk full')
 		})
 
-		it('should propagate error when fs.unlink fails to delete trashed note', async () => {
+		it('should ignore ENOENT error when file does not exist for trashed note', async () => {
 			mockSqlite = makeMockSqlite([
-				{ title: 'Trashed Note', text: 'Content', tag: null, trashed: 1 },
+				{ id: 1, title: 'Trashed Note', text: 'Content', tag: null, trashed: 1 },
 			])
 			mockMakeDir = makeMockMakeDir()
+			const enoentError = new Error('ENOENT: no such file or directory')
+			enoentError.code = 'ENOENT'
 			mockFs = {
 				writeFile: vi.fn().mockResolvedValue(undefined),
-				unlink: vi.fn().mockRejectedValue(new Error('ENOENT: no such file')),
+				unlink: vi.fn().mockRejectedValue(enoentError),
 			}
 
 			await expect(backup('/output/path', {
@@ -478,12 +480,32 @@ describe('backup function', () => {
 				makeDir: mockMakeDir,
 				fs: mockFs,
 				dbPath: '/test/db.sqlite',
-			})).rejects.toThrow('ENOENT')
+			})).resolves.not.toThrow()
+		})
+
+		it('should propagate non-ENOENT errors when fs.unlink fails to delete trashed note', async () => {
+			mockSqlite = makeMockSqlite([
+				{ id: 1, title: 'Trashed Note', text: 'Content', tag: null, trashed: 1 },
+			])
+			mockMakeDir = makeMockMakeDir()
+			const permissionError = new Error('EACCES: permission denied')
+			permissionError.code = 'EACCES'
+			mockFs = {
+				writeFile: vi.fn().mockResolvedValue(undefined),
+				unlink: vi.fn().mockRejectedValue(permissionError),
+			}
+
+			await expect(backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+			})).rejects.toThrow('EACCES')
 		})
 
 		it('should propagate error when makeDir fails to create tag directory', async () => {
 			mockSqlite = makeMockSqlite([
-				{ title: 'Note', text: 'Content', tag: 'work', trashed: 0 },
+				{ id: 1, title: 'Note', text: 'Content', tag: 'work', trashed: 0 },
 			])
 			let callCount = 0
 			const mockMakeDirFailOnSecond = vi.fn().mockImplementation(() => {
@@ -508,7 +530,7 @@ describe('backup function', () => {
 	describe('edge cases with note content', () => {
 		it('should handle note with empty string text content', async () => {
 			mockSqlite = makeMockSqlite([
-				{ title: 'Empty Note', text: '', tag: null, trashed: 0 },
+				{ id: 1, title: 'Empty Note', text: '', tag: null, trashed: 0 },
 			])
 			mockMakeDir = makeMockMakeDir()
 			mockFs = makeMockFs()
@@ -529,7 +551,7 @@ describe('backup function', () => {
 
 		it('should handle note with null text content', async () => {
 			mockSqlite = makeMockSqlite([
-				{ title: 'Null Content Note', text: null, tag: null, trashed: 0 },
+				{ id: 1, title: 'Null Content Note', text: null, tag: null, trashed: 0 },
 			])
 			mockMakeDir = makeMockMakeDir()
 			mockFs = makeMockFs()
@@ -548,9 +570,9 @@ describe('backup function', () => {
 			)
 		})
 
-		it('should handle note with empty string title', async () => {
+		it('should use untitled-{id}.md for note with empty string title', async () => {
 			mockSqlite = makeMockSqlite([
-				{ title: '', text: 'Content', tag: null, trashed: 0 },
+				{ id: 123, title: '', text: 'Content', tag: null, trashed: 0 },
 			])
 			mockMakeDir = makeMockMakeDir()
 			mockFs = makeMockFs()
@@ -563,7 +585,7 @@ describe('backup function', () => {
 			})
 
 			expect(mockFs.writeFile).toHaveBeenCalledWith(
-				path.join('/output/path', '.md'),
+				path.join('/output/path', 'untitled-123.md'),
 				'Content',
 				{ encoding: 'utf8' }
 			)
@@ -571,7 +593,7 @@ describe('backup function', () => {
 
 		it('should propagate error when note has null title causing buildFilename to throw', async () => {
 			mockSqlite = makeMockSqlite([
-				{ title: null, text: 'Content', tag: null, trashed: 0 },
+				{ id: 1, title: null, text: 'Content', tag: null, trashed: 0 },
 			])
 			mockMakeDir = makeMockMakeDir()
 			mockFs = makeMockFs()
@@ -586,8 +608,8 @@ describe('backup function', () => {
 
 		it('should handle same note appearing with multiple different tags', async () => {
 			mockSqlite = makeMockSqlite([
-				{ title: 'Multi-tag Note', text: 'Content', tag: 'work', trashed: 0 },
-				{ title: 'Multi-tag Note', text: 'Content', tag: 'personal', trashed: 0 },
+				{ id: 1, title: 'Multi-tag Note', text: 'Content', tag: 'work', trashed: 0 },
+				{ id: 1, title: 'Multi-tag Note', text: 'Content', tag: 'personal', trashed: 0 },
 			])
 			mockMakeDir = makeMockMakeDir()
 			mockFs = makeMockFs()
@@ -616,7 +638,7 @@ describe('backup function', () => {
 		it('should handle note with very long title that requires truncation', async () => {
 			const longTitle = 'a'.repeat(300)
 			mockSqlite = makeMockSqlite([
-				{ title: longTitle, text: 'Content', tag: null, trashed: 0 },
+				{ id: 1, title: longTitle, text: 'Content', tag: null, trashed: 0 },
 			])
 			mockMakeDir = makeMockMakeDir()
 			mockFs = makeMockFs()
@@ -632,6 +654,296 @@ describe('backup function', () => {
 			const filename = path.basename(writtenPath)
 			expect(Buffer.byteLength(filename, 'utf8')).toBeLessThanOrEqual(255)
 			expect(filename.endsWith('.md')).toBe(true)
+		})
+
+		it('should use untitled-{id}.md for whitespace-only title', async () => {
+			mockSqlite = makeMockSqlite([
+				{ id: 456, title: '   ', text: 'Content', tag: null, trashed: 0 },
+			])
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+			})
+
+			expect(mockFs.writeFile).toHaveBeenCalledWith(
+				path.join('/output/path', 'untitled-456.md'),
+				'Content',
+				{ encoding: 'utf8' }
+			)
+		})
+
+		it('should delete untitled-{id}.md for trashed empty-title note', async () => {
+			mockSqlite = makeMockSqlite([
+				{ id: 789, title: '', text: 'Content', tag: null, trashed: 1 },
+			])
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+			})
+
+			expect(mockFs.unlink).toHaveBeenCalledWith(
+				path.join('/output/path', 'untitled-789.md')
+			)
+		})
+
+		it('should write untitled-{id}.md to tag directory when useTagsAsDirectories is true', async () => {
+			mockSqlite = makeMockSqlite([
+				{ id: 111, title: '   ', text: 'Content', tag: 'work', trashed: 0 },
+			])
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				useTagsAsDirectories: true,
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+			})
+
+			expect(mockFs.writeFile).toHaveBeenCalledWith(
+				path.join('/output/path', 'work', 'untitled-111.md'),
+				'Content',
+				{ encoding: 'utf8' }
+			)
+		})
+	})
+
+	describe('filename deduplication to prevent overwrites', () => {
+		it('should append -1 suffix to second note with same title', async () => {
+			mockSqlite = makeMockSqlite([
+				{ id: 1, title: 'Duplicate', text: 'Content 1', tag: null, trashed: 0 },
+				{ id: 2, title: 'Duplicate', text: 'Content 2', tag: null, trashed: 0 },
+			])
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+			})
+
+			expect(mockFs.writeFile).toHaveBeenCalledWith(
+				path.join('/output/path', 'Duplicate.md'),
+				'Content 1',
+				{ encoding: 'utf8' }
+			)
+			expect(mockFs.writeFile).toHaveBeenCalledWith(
+				path.join('/output/path', 'Duplicate-1.md'),
+				'Content 2',
+				{ encoding: 'utf8' }
+			)
+		})
+
+		it('should append incrementing suffixes for multiple notes with same title', async () => {
+			mockSqlite = makeMockSqlite([
+				{ id: 1, title: 'Same', text: 'Content 1', tag: null, trashed: 0 },
+				{ id: 2, title: 'Same', text: 'Content 2', tag: null, trashed: 0 },
+				{ id: 3, title: 'Same', text: 'Content 3', tag: null, trashed: 0 },
+				{ id: 4, title: 'Same', text: 'Content 4', tag: null, trashed: 0 },
+			])
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+			})
+
+			expect(mockFs.writeFile).toHaveBeenCalledTimes(4)
+			expect(mockFs.writeFile).toHaveBeenCalledWith(
+				path.join('/output/path', 'Same.md'),
+				'Content 1',
+				{ encoding: 'utf8' }
+			)
+			expect(mockFs.writeFile).toHaveBeenCalledWith(
+				path.join('/output/path', 'Same-1.md'),
+				'Content 2',
+				{ encoding: 'utf8' }
+			)
+			expect(mockFs.writeFile).toHaveBeenCalledWith(
+				path.join('/output/path', 'Same-2.md'),
+				'Content 3',
+				{ encoding: 'utf8' }
+			)
+			expect(mockFs.writeFile).toHaveBeenCalledWith(
+				path.join('/output/path', 'Same-3.md'),
+				'Content 4',
+				{ encoding: 'utf8' }
+			)
+		})
+
+		it('should not add suffix for same title in different tag directories', async () => {
+			mockSqlite = makeMockSqlite([
+				{ id: 1, title: 'Note', text: 'Work content', tag: 'work', trashed: 0 },
+				{ id: 2, title: 'Note', text: 'Personal content', tag: 'personal', trashed: 0 },
+			])
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				useTagsAsDirectories: true,
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+			})
+
+			expect(mockFs.writeFile).toHaveBeenCalledWith(
+				path.join('/output/path', 'work', 'Note.md'),
+				'Work content',
+				{ encoding: 'utf8' }
+			)
+			expect(mockFs.writeFile).toHaveBeenCalledWith(
+				path.join('/output/path', 'personal', 'Note.md'),
+				'Personal content',
+				{ encoding: 'utf8' }
+			)
+		})
+
+		it('should add suffix for same title in same tag directory', async () => {
+			mockSqlite = makeMockSqlite([
+				{ id: 1, title: 'Note', text: 'Content 1', tag: 'work', trashed: 0 },
+				{ id: 2, title: 'Note', text: 'Content 2', tag: 'work', trashed: 0 },
+			])
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				useTagsAsDirectories: true,
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+			})
+
+			expect(mockFs.writeFile).toHaveBeenCalledWith(
+				path.join('/output/path', 'work', 'Note.md'),
+				'Content 1',
+				{ encoding: 'utf8' }
+			)
+			expect(mockFs.writeFile).toHaveBeenCalledWith(
+				path.join('/output/path', 'work', 'Note-1.md'),
+				'Content 2',
+				{ encoding: 'utf8' }
+			)
+		})
+
+		it('should truncate base filename when adding suffix would exceed 255 bytes', async () => {
+			const longTitle = 'a'.repeat(251)
+			mockSqlite = makeMockSqlite([
+				{ id: 1, title: longTitle, text: 'Content 1', tag: null, trashed: 0 },
+				{ id: 2, title: longTitle, text: 'Content 2', tag: null, trashed: 0 },
+			])
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+			})
+
+			const calls = mockFs.writeFile.mock.calls
+			expect(calls).toHaveLength(2)
+
+			const firstFilename = path.basename(calls[0][0])
+			expect(firstFilename).toBe(longTitle + '.md')
+
+			const secondFilename = path.basename(calls[1][0])
+			expect(Buffer.byteLength(secondFilename, 'utf8')).toBeLessThanOrEqual(255)
+			expect(secondFilename).toMatch(/-1\.md$/)
+		})
+
+		it('should deduplicate titles that normalize to same filename via slash replacement', async () => {
+			mockSqlite = makeMockSqlite([
+				{ id: 1, title: 'a/b', text: 'Content 1', tag: null, trashed: 0 },
+				{ id: 2, title: 'a-b', text: 'Content 2', tag: null, trashed: 0 },
+			])
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+			})
+
+			expect(mockFs.writeFile).toHaveBeenCalledWith(
+				path.join('/output/path', 'a-b.md'),
+				'Content 1',
+				{ encoding: 'utf8' }
+			)
+			expect(mockFs.writeFile).toHaveBeenCalledWith(
+				path.join('/output/path', 'a-b-1.md'),
+				'Content 2',
+				{ encoding: 'utf8' }
+			)
+		})
+
+		it('should deduplicate trashed notes for correct file deletion', async () => {
+			mockSqlite = makeMockSqlite([
+				{ id: 1, title: 'To Delete', text: 'Content 1', tag: null, trashed: 1 },
+				{ id: 2, title: 'To Delete', text: 'Content 2', tag: null, trashed: 1 },
+			])
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+			})
+
+			expect(mockFs.unlink).toHaveBeenCalledWith(
+				path.join('/output/path', 'To Delete.md')
+			)
+			expect(mockFs.unlink).toHaveBeenCalledWith(
+				path.join('/output/path', 'To Delete-1.md')
+			)
+		})
+
+		it('should handle large suffix numbers without exceeding byte limit', async () => {
+			const notes = Array.from({ length: 15 }, (_, i) => ({
+				id: i + 1,
+				title: 'a'.repeat(250),
+				text: `Content ${i}`,
+				tag: null,
+				trashed: 0,
+			}))
+			mockSqlite = makeMockSqlite(notes)
+			mockMakeDir = makeMockMakeDir()
+			mockFs = makeMockFs()
+
+			await backup('/output/path', {
+				sqlite: mockSqlite,
+				makeDir: mockMakeDir,
+				fs: mockFs,
+				dbPath: '/test/db.sqlite',
+			})
+
+			const calls = mockFs.writeFile.mock.calls
+			for (const call of calls) {
+				const filename = path.basename(call[0])
+				expect(Buffer.byteLength(filename, 'utf8')).toBeLessThanOrEqual(255)
+			}
 		})
 	})
 })

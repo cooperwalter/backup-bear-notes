@@ -1,5 +1,9 @@
 Back up your Bear Notes as markdown files.
 
+# Requirements
+
+Requires [Node.js](https://nodejs.org/). See the [official download page](https://nodejs.org/en/download/) for installation instructions.
+
 # Usage
 
 ```sh

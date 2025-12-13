@@ -4,12 +4,12 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['__tests__/**/*.test.js'],
+    include: ['__tests__/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
-      include: ['*.js', 'lib/**/*.js'],
-      exclude: ['vitest.config.js', '__tests__/**', 'test.js'],
+      include: ['src/**/*.ts'],
+      exclude: ['src/types/**'],
     },
   },
 });

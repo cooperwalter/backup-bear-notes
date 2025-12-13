@@ -21,6 +21,7 @@
     "backup": "tsx src/index.ts",
     "build": "tsc",
     "prepublishOnly": "npm run build",
+    "release": "npm version patch && npm publish --access public && git push && git push --tags",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

@@ -1,21 +1,9 @@
 Back up your Bear Notes as markdown files.
 
-# Install
-
-```sh
-npm i -g @cooperwalter/backup-bear-notes
-```
-
 # Usage
 
 ```sh
 npx @cooperwalter/backup-bear-notes ./my-backup-location
-```
-
-Or if installed globally:
-
-```sh
-backup-bear-notes ./my-backup-location
 ```
 
 Use the `--use-tags-as-directories` flag to organize notes into folders by tag:

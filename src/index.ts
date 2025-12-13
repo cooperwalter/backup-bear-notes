@@ -2,6 +2,7 @@
 
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import { realpathSync } from 'node:fs';
 import { open as sqliteOpen } from 'sqlite';
 import sqlite3 from 'sqlite3';
 import { makeDirectory } from 'make-dir';
@@ -21,7 +22,9 @@ interface CliArgs {
   _: string[];
 }
 
-const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
+const thisFile = fileURLToPath(import.meta.url);
+const argFile = process.argv[1];
+const isMainModule = argFile === thisFile || realpathSync(argFile) === realpathSync(thisFile);
 
 if (isMainModule) {
   const args = mri<CliArgs>(process.argv.slice(2));

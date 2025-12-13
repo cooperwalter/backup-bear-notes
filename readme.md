@@ -21,7 +21,7 @@ backup-bear-notes ./my-backup-location
 Use the `--use-tags-as-directories` flag to organize notes into folders by tag:
 
 ```sh
-backup-bear-notes ./my-backup-location --use-tags-as-directories
+npx @cooperwalter/backup-bear-notes ./my-backup-location --use-tags-as-directories
 ```
 
 # Features
@@ -34,7 +34,7 @@ backup-bear-notes ./my-backup-location --use-tags-as-directories
 
 ```sh
 npm install
-node index.js <output-directory>
+npm run backup -- <output-directory>
 ```
 
 ## Testing

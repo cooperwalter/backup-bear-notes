@@ -1,5 +1,5 @@
 {
-  "name": "backup-bear-notes",
+  "name": "@cooperwalter/backup-bear-notes",
   "version": "1.0.5",
   "description": "Back up your Bear Notes content to a folder",
   "type": "module",
